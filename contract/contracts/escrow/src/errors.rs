@@ -50,6 +50,10 @@ pub enum EscrowError {
     EmptyFreezeReason = 21,
     /// System admin not set
     AdminNotSet = 22,
+    /// Agreement id must not be empty
+    EmptyAgreementId = 23,
+    /// Caller is not the configured dispute_resolution contract
+    NotDisputeResolutionContract = 24,
     /// Contract is globally paused; state-changing operations are blocked
     ContractPaused = 23,
     /// Contract is not currently paused

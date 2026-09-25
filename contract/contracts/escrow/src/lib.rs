@@ -39,6 +39,10 @@ mod tests_rbac;
 mod tests_property;
 
 #[cfg(test)]
+mod tests_support;
+
+#[cfg(test)]
+mod tests_dispute_resolution_integration;
 mod tests_reentrancy;
 
 // Re-export public APIs

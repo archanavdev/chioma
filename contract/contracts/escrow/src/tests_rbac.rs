@@ -5,7 +5,7 @@
 
 use soroban_sdk::testutils::Address as _;
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
-use soroban_sdk::{Address, Env};
+use soroban_sdk::{Address, Env, String};
 
 use crate::errors::EscrowError;
 use crate::escrow_impl::{EscrowContract, EscrowContractClient};
@@ -21,6 +21,8 @@ fn setup(
     Address, // platform_governance
     Address, // agent_referral
     Address, // token
+    String,  // agreement_id
+    Address, // dispute_resolution_contract
 ) {
     let contract_id = env.register(EscrowContract, ());
     let client = EscrowContractClient::new(env, &contract_id);
@@ -34,6 +36,8 @@ fn setup(
     let token = env
         .register_stellar_asset_contract_v2(token_admin)
         .address();
+    let agreement_id = String::from_str(env, "agreement-rbac-1");
+    let dispute_resolution_contract = crate::tests_support::deploy_mock_dispute_resolution(env);
 
     (
         client,
@@ -43,9 +47,12 @@ fn setup(
         platform_governance,
         agent_referral,
         token,
+        agreement_id,
+        dispute_resolution_contract,
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn funded_escrow(
     env: &Env,
     client: &EscrowContractClient<'_>,
@@ -55,6 +62,8 @@ fn funded_escrow(
     platform_governance: &Address,
     agent_referral: &Address,
     token: &Address,
+    agreement_id: &String,
+    dispute_resolution_contract: &Address,
     amount: i128,
 ) -> soroban_sdk::BytesN<32> {
     let escrow_id = client.create(
@@ -65,6 +74,8 @@ fn funded_escrow(
         agent_referral,
         &amount,
         token,
+        agreement_id,
+        dispute_resolution_contract,
     );
 
     let token_admin_client = TokenAdminClient::new(env, token);
@@ -149,8 +160,17 @@ fn test_admin_can_freeze_escrow() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
     let admin = Address::generate(&env);
     client.initialize_admin(&admin);
 
@@ -163,6 +183,8 @@ fn test_admin_can_freeze_escrow() {
         &platform_governance,
         &agent_referral,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
         1000,
     );
 
@@ -177,8 +199,17 @@ fn test_arbiter_can_freeze_escrow() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
     let admin = Address::generate(&env);
     client.initialize_admin(&admin);
 
@@ -191,6 +222,8 @@ fn test_arbiter_can_freeze_escrow() {
         &platform_governance,
         &agent_referral,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
         1000,
     );
 
@@ -205,8 +238,17 @@ fn test_non_admin_non_arbiter_cannot_freeze_escrow() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
     let admin = Address::generate(&env);
     let outsider = Address::generate(&env);
     client.initialize_admin(&admin);
@@ -220,6 +262,8 @@ fn test_non_admin_non_arbiter_cannot_freeze_escrow() {
         &platform_governance,
         &agent_referral,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
         1000,
     );
 
@@ -234,8 +278,17 @@ fn test_admin_can_unfreeze_escrow() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
     let admin = Address::generate(&env);
     client.initialize_admin(&admin);
 
@@ -248,6 +301,8 @@ fn test_admin_can_unfreeze_escrow() {
         &platform_governance,
         &agent_referral,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
         1000,
     );
 
@@ -266,8 +321,17 @@ fn test_arbiter_cannot_unfreeze_escrow() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
     let admin = Address::generate(&env);
     client.initialize_admin(&admin);
 
@@ -280,6 +344,8 @@ fn test_arbiter_cannot_unfreeze_escrow() {
         &platform_governance,
         &agent_referral,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
         1000,
     );
 
@@ -296,8 +362,17 @@ fn test_outsider_cannot_unfreeze_escrow() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
     let admin = Address::generate(&env);
     let outsider = Address::generate(&env);
     client.initialize_admin(&admin);
@@ -311,6 +386,8 @@ fn test_outsider_cannot_unfreeze_escrow() {
         &platform_governance,
         &agent_referral,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
         1000,
     );
 
@@ -326,8 +403,17 @@ fn test_depositor_can_fund_escrow() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
     let amount = 500i128;
 
     let escrow_id = client.create(
@@ -338,6 +424,8 @@ fn test_depositor_can_fund_escrow() {
         &agent_referral,
         &amount,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
     );
 
     let token_admin_client = TokenAdminClient::new(&env, &token);
@@ -354,8 +442,17 @@ fn test_beneficiary_cannot_fund_escrow() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
     let amount = 500i128;
 
     let escrow_id = client.create(
@@ -366,6 +463,8 @@ fn test_beneficiary_cannot_fund_escrow() {
         &agent_referral,
         &amount,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
     );
 
     let token_admin_client = TokenAdminClient::new(&env, &token);
@@ -403,8 +502,17 @@ fn test_beneficiary_can_approve_release() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
 
     let escrow_id = funded_escrow(
         &env,
@@ -415,6 +523,8 @@ fn test_beneficiary_can_approve_release() {
         &platform_governance,
         &agent_referral,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
         1000,
     );
 
@@ -431,8 +541,17 @@ fn test_outsider_cannot_approve_release() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
     let outsider = Address::generate(&env);
 
     let escrow_id = funded_escrow(
@@ -444,6 +563,8 @@ fn test_outsider_cannot_approve_release() {
         &platform_governance,
         &agent_referral,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
         1000,
     );
 
@@ -458,8 +579,17 @@ fn test_beneficiary_can_initiate_dispute() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
 
     let escrow_id = funded_escrow(
         &env,
@@ -470,6 +600,8 @@ fn test_beneficiary_can_initiate_dispute() {
         &platform_governance,
         &agent_referral,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
         1000,
     );
 
@@ -488,8 +620,17 @@ fn test_outsider_cannot_initiate_dispute() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
     let outsider = Address::generate(&env);
 
     let escrow_id = funded_escrow(
@@ -501,6 +642,8 @@ fn test_outsider_cannot_initiate_dispute() {
         &platform_governance,
         &agent_referral,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
         1000,
     );
 
@@ -509,15 +652,38 @@ fn test_outsider_cannot_initiate_dispute() {
     client.initiate_dispute(&escrow_id, &outsider, &reason);
 }
 
-// ── resolve_dispute ─────────────────────────────────────────────────────────
+// ── resolve_dispute_from_arbitration ────────────────────────────────────────
+//
+// NOTE (issue #1560): `resolve_dispute` (arbiter-gated) has been removed.
+// `test_arbiter_can_resolve_dispute` is migrated below to prove the
+// equivalent property under the new model: resolution now requires a call
+// genuinely routed through the escrow's configured
+// dispute_resolution_contract, not any particular human-controlled address
+// (arbiter included). `test_non_arbiter_cannot_resolve_dispute`'s intent —
+// "an address that isn't authorized cannot resolve" — is still covered, but
+// precisely distinguishing "authorized dispute_resolution contract" from
+// "any other caller" requires NOT using `env.mock_all_auths()` (blanket
+// mocking cannot express that distinction, see the note in
+// `tests.rs::test_authorization_resolve_dispute_direct_call_fails`'s
+// replacement comment), so that half of the coverage lives in
+// `tests_dispute_resolution_integration` instead of here.
 
 #[test]
-fn test_arbiter_can_resolve_dispute() {
+fn test_dispute_resolution_contract_can_resolve_dispute() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
 
     let escrow_id = funded_escrow(
         &env,
@@ -528,44 +694,26 @@ fn test_arbiter_can_resolve_dispute() {
         &platform_governance,
         &agent_referral,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
         1000,
     );
 
     let reason = soroban_sdk::String::from_str(&env, "dispute");
     client.initiate_dispute(&escrow_id, &depositor, &reason);
 
-    // Arbiter resolves dispute in favor of beneficiary
-    let result = client.try_resolve_dispute(&escrow_id, &arbiter, &beneficiary);
-    assert!(result.is_ok(), "arbiter should be able to resolve dispute");
-}
-
-#[test]
-#[should_panic(expected = "Error(Contract, #1)")]
-fn test_non_arbiter_cannot_resolve_dispute() {
-    let env = Env::default();
-    env.mock_all_auths();
-
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
-    let outsider = Address::generate(&env);
-
-    let escrow_id = funded_escrow(
-        &env,
-        &client,
-        &depositor,
-        &beneficiary,
-        &arbiter,
-        &platform_governance,
-        &agent_referral,
-        &token,
-        1000,
+    // The escrow's configured dispute_resolution_contract resolves the
+    // dispute in favor of beneficiary, via the same
+    // resolve_dispute_from_arbitration path any completed arbitration
+    // outcome must use.
+    let mock_client =
+        crate::tests_support::MockDisputeResolutionClient::new(&env, &dispute_resolution_contract);
+    let result = mock_client.try_resolve_and_release(&client.address, &escrow_id, &beneficiary);
+    assert!(
+        result.is_ok(),
+        "the configured dispute_resolution_contract should be able to resolve"
     );
-
-    let reason = soroban_sdk::String::from_str(&env, "dispute");
-    client.initiate_dispute(&escrow_id, &depositor, &reason);
-
-    // Outsider cannot resolve dispute
-    client.resolve_dispute(&escrow_id, &outsider, &beneficiary);
+    assert_eq!(client.get_escrow(&escrow_id).status, EscrowStatus::Released);
 }
 
 // ── approve_partial_release ─────────────────────────────────────────────────
@@ -575,8 +723,17 @@ fn test_depositor_can_approve_partial_release() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
 
     let escrow_id = funded_escrow(
         &env,
@@ -587,6 +744,8 @@ fn test_depositor_can_approve_partial_release() {
         &platform_governance,
         &agent_referral,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
         1000,
     );
 
@@ -603,8 +762,17 @@ fn test_outsider_cannot_approve_partial_release() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
     let outsider = Address::generate(&env);
 
     let escrow_id = funded_escrow(
@@ -616,6 +784,8 @@ fn test_outsider_cannot_approve_partial_release() {
         &platform_governance,
         &agent_referral,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
         1000,
     );
 
@@ -630,8 +800,17 @@ fn test_admin_can_unfreeze_and_release() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, depositor, beneficiary, arbiter, platform_governance, agent_referral, token) =
-        setup(&env);
+    let (
+        client,
+        depositor,
+        beneficiary,
+        arbiter,
+        platform_governance,
+        agent_referral,
+        token,
+        agreement_id,
+        dispute_resolution_contract,
+    ) = setup(&env);
     let admin = Address::generate(&env);
     client.initialize_admin(&admin);
 
@@ -644,6 +823,8 @@ fn test_admin_can_unfreeze_and_release() {
         &platform_governance,
         &agent_referral,
         &token,
+        &agreement_id,
+        &dispute_resolution_contract,
         1000,
     );
 
