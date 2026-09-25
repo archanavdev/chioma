@@ -38,7 +38,7 @@ function isPlaceholderSecret(value: string): boolean {
 }
 
 const MIN_JWT_SECRET_BYTES = 32;
-const MIN_JWT_SECRET_ENTROPY_BITS_PER_CHAR = 3;
+const MIN_JWT_SECRET_ENTROPY_BITS_PER_CHAR = 4.5;
 const JWT_SECRET_GENERATION_HINT =
   'Generate a strong secret with: openssl rand -base64 48';
 
@@ -80,7 +80,7 @@ function validateJwtSecret(
     MIN_JWT_SECRET_ENTROPY_BITS_PER_CHAR
   ) {
     errors.push(
-      `${name} does not have enough entropy — it looks repetitive or predictable rather than randomly generated. ${JWT_SECRET_GENERATION_HINT}`,
+      `${name} does not have enough entropy (minimum 4.5 bits/character) — it looks repetitive or predictable rather than randomly generated. ${JWT_SECRET_GENERATION_HINT}`,
     );
   }
 }
